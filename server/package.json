@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "tsx watch src/app.ts",
     "build": "echo 'No build step required for tsx production execution'",
-    "start": "tsx src/app.ts",
-    "seed:users": "ts-node-dev --transpile-only src/db/seed.ts"
+    "start": "drizzle-kit migrate && tsx src/app.ts",
+    "seed:users": "ts-node-dev --transpile-only src/db/seed.ts",
+    "db:push": "drizzle-kit push"
   },
   "keywords": [],
   "author": "",
