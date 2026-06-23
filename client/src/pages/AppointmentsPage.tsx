@@ -146,7 +146,8 @@ export const AppointmentsPage = () => {
   const [appointmentDate, setAppointmentDate] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [formValues, setFormValues] = useState<AppointmentFormValues>(emptyAppointmentForm);
-  const [statusError, setStatusError] = useState('');
+  //const [statusError, setStatusError] = useState('');
+  const [statusError] = useState<string | null>(null);
   const [completingAppointmentId, setCompletingAppointmentId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
