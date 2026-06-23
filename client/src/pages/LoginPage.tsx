@@ -137,7 +137,7 @@ export const LoginPage = () => {
 
         {/* Footer */}
         <div className="mt-6 text-center text-gray-600 text-sm">
-          <p>.</p>
+          <p></p>
         </div>
       </div>
     </div>

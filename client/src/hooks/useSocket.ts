@@ -66,7 +66,7 @@ export const useAppointmentSocket = (
             console.log('[Socket] Connected successfully as:', user?.email);
         });
 
-        socket.on('connect_error', (err) => {
+        socket.on('connect_error', (err: any) => {
             console.error('[Socket] Connection error:', err.message);
         });
 

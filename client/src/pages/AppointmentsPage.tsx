@@ -21,7 +21,7 @@ import {
   useCreateAppointment,
   useDeleteAppointment,
   useStaffServicesQuery,
-  useUpdateAppointmentStatus,
+  //useUpdateAppointmentStatus,
   type AppointmentFormValues,
   type AppointmentStatus,
 } from '../hooks/useAppointmentsManagement';
@@ -168,7 +168,7 @@ export const AppointmentsPage = () => {
   const servicesQuery = useStaffServicesQuery();
   const doctorsQuery = useAdminUsersQuery({ page: 1, limit: 100, role: 'doctor' });
   const createAppointment = useCreateAppointment();
-  const updateStatus = useUpdateAppointmentStatus();
+  //const updateStatus = useUpdateAppointmentStatus();
   const deleteAppointment = useDeleteAppointment();
   const appointments = appointmentsQuery.data?.items ?? [];
   const total = appointmentsQuery.data?.meta.total ?? 0;
@@ -278,14 +278,14 @@ export const AppointmentsPage = () => {
     }
   };
 
-  const handleStatusChange = async (id: string, nextStatus: AppointmentStatus) => {
+  /*const handleStatusChange = async (id: string, nextStatus: AppointmentStatus) => {
     setStatusError('');
     try {
       await updateStatus.mutateAsync({ id, status: nextStatus });
     } catch {
       setStatusError('Appointment status could not be updated. Please try again.');
     }
-  };
+  }; */
 
   const handleDelete = async (id: string) => {
     try {

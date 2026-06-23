@@ -106,7 +106,7 @@ export const ServicesPage = () => {
                   name={service.name}
                   description={service.description}
                   durationInMinutes={service.durationInMinutes}
-                  basePrice={service.basePrice}
+                  //basePrice={service.basePrice}
                   isActive={service.isActive}
                 />
               ))}

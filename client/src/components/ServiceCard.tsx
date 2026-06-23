@@ -6,7 +6,7 @@ export interface ServiceCardProps {
   name: string;
   description: string;
   durationInMinutes: number;
-  basePrice: string;
+  //basePrice: string;
   isActive: boolean;
 }
 
@@ -15,7 +15,7 @@ export const ServiceCard = ({
   name,
   description,
   durationInMinutes,
-  basePrice,
+  //basePrice,
   isActive,
 }: ServiceCardProps) => {
   // Map service names to icons (you can extend this)
