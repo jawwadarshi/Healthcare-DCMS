@@ -1,0 +1,191 @@
+import { AppError } from "../../common/errors/app-error.js";
+import { db } from "../../db/index.js";
+import { patients, services } from "../../db/schema.js";
+import { eq } from "drizzle-orm";
+import { billingRepository, type InvoiceItemRow } from "./billing.repository.js";
+import type { CreateInvoiceInput, UpdatePaymentStatusInput, GetPatientInvoicesQuery, ListAllInvoicesQuery } from "./billing.validation.js";
+//import { v4 as generateUUID } from "crypto";
+import { inArray } from 'drizzle-orm';
+export class BillingService {
+    /**
+     * Generate a unique invoice number
+     */
+    private generateInvoiceNumber(): string {
+        const date = new Date();
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        const random = Math.floor(Math.random() * 10000)
+            .toString()
+            .padStart(4, "0");
+
+        return `INV-${year}${month}${day}-${random}`;
+    }
+
+    /**
+     * Create a new invoice with items
+     */
+    async createInvoice(createdBy: string, payload: CreateInvoiceInput) {
+        // Validate patient exists
+        const patient = await db
+            .select()
+            .from(patients)
+            .where(eq(patients.id, payload.patientId))
+            .limit(1);
+
+        if (!patient[0]) {
+            throw new AppError("Patient not found", 404);
+        }
+
+        // Validate all services exist
+        const serviceIds = payload.items.map((item) => item.serviceId);
+        /*const serviceList = await db
+            .select()
+            .from(services)
+            .where((s) => serviceIds.includes(s.id));*/
+        const result = await db.select()
+            .from(services)
+            .where(inArray(services.id, serviceIds));
+
+        if (serviceIds.length !== serviceIds.length) {
+            throw new AppError("One or more services not found", 404);
+        }
+
+        // Calculate totals
+        let subtotal = 0;
+        const invoiceItems: Omit<InvoiceItemRow, "id" | "invoiceId" | "createdAt">[] = [];
+
+        for (const item of payload.items) {
+            const unitPrice = parseFloat(item.unitPrice);
+            const itemSubtotal = unitPrice * item.quantity;
+            subtotal += itemSubtotal;
+
+            invoiceItems.push({
+                serviceId: item.serviceId,
+                description: item.description,
+                quantity: item.quantity,
+                unitPrice: unitPrice.toString(),
+                subtotal: itemSubtotal.toString(),
+            });
+        }
+
+        const discount = parseFloat(payload.discount || "0");
+        const total = Math.max(0, subtotal - discount);
+
+        // Create invoice
+        const invoice = await billingRepository.createInvoice({
+            invoiceNumber: this.generateInvoiceNumber(),
+            patientId: payload.patientId,
+            treatmentHistoryId: payload.treatmentHistoryId,
+            subtotal: subtotal.toString(),
+            discount: discount.toString(),
+            total: total.toString(),
+            paymentStatus: "pending",
+            paymentMethod: undefined,
+            paymentDate: undefined,
+            paymentNotes: undefined,
+            issuedDate: new Date(),
+            dueDate: payload.dueDate ? new Date(payload.dueDate) : undefined,
+            createdBy,
+        });
+
+        // Add items to invoice
+        await billingRepository.addInvoiceItems(invoice.id, invoiceItems);
+
+        // Fetch and return invoice with items
+        return await billingRepository.findInvoiceById(invoice.id);
+    }
+
+    /**
+     * Get invoice by ID
+     */
+    async getInvoiceById(id: string) {
+        const invoice = await billingRepository.findInvoiceById(id);
+        if (!invoice) {
+            throw new AppError("Invoice not found", 404);
+        }
+        return invoice;
+    }
+
+    /**
+     * List all invoices (global)
+     */
+    async deleteInvoice(id: string) {
+        const invoice = await billingRepository.findInvoiceById(id);
+        if (!invoice) {
+            throw new AppError("Invoice not found", 404);
+        }
+        return await billingRepository.deleteInvoice(id);
+    }
+
+    async listAllInvoices(query: ListAllInvoicesQuery) {
+        return await billingRepository.listAllInvoices({
+            page: query.page,
+            limit: query.limit,
+            paymentStatus: query.paymentStatus,
+            search: query.search,
+        });
+    }
+
+    /**
+     * List patient invoices
+     */
+    async listPatientInvoices(patientId: string, query: GetPatientInvoicesQuery) {
+        // Validate patient exists
+        const patient = await db
+            .select()
+            .from(patients)
+            .where(eq(patients.id, patientId))
+            .limit(1);
+
+        if (!patient[0]) {
+            throw new AppError("Patient not found", 404);
+        }
+
+        return await billingRepository.listPatientInvoices(patientId, {
+            page: query.page,
+            limit: query.limit,
+            paymentStatus: query.paymentStatus,
+            sortBy: query.sortBy,
+            sortOrder: query.sortOrder,
+        });
+    }
+
+    /**
+     * Update invoice payment status
+     */
+    async updatePaymentStatus(id: string, payload: UpdatePaymentStatusInput) {
+        // Validate invoice exists
+        const invoice = await billingRepository.findInvoiceById(id);
+        if (!invoice) {
+            throw new AppError("Invoice not found", 404);
+        }
+
+        // Validate payment status
+        const validStatuses = ["pending", "paid", "partially_paid"];
+        if (!validStatuses.includes(payload.paymentStatus)) {
+            throw new AppError("Invalid payment status", 400);
+        }
+
+        // Update payment status
+        const updated = await billingRepository.updatePaymentStatus(
+            id,
+            payload.paymentStatus,
+            payload.paymentMethod,
+            payload.paymentDate ? new Date(payload.paymentDate) : undefined,
+            payload.paymentNotes
+        );
+
+        if (!updated) {
+            throw new AppError("Failed to update invoice", 500);
+        }
+
+        // Log payment update
+        console.info(`[Billing] Invoice ${invoice.invoiceNumber} payment status updated to ${payload.paymentStatus}`);
+
+        // Fetch and return updated invoice
+        return await billingRepository.findInvoiceById(id);
+    }
+}
+
+export const billingService = new BillingService();
