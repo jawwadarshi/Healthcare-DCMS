@@ -288,7 +288,7 @@ export class WhatsAppAutomationService {
       .where(eq(services.isActive, true))
       .orderBy(asc(services.createdAt));
 
-    console.log("[DEBUG BOOKING] active services found:", allServices.length);
+    //console.log("[DEBUG BOOKING] active services found:", allServices.length);
 
     if (!allServices.length) {
       await whatsappService.sendTextMessage(
@@ -299,7 +299,7 @@ export class WhatsAppAutomationService {
     }
 
     if (allServices.length === 1) {
-      console.log("[DEBUG BOOKING] only one service, skipping selection");
+      //console.log("[DEBUG BOOKING] only one service, skipping selection");
       await this.sendSlotsForService(context, allServices[0]!.id);
       return;
     }
@@ -325,7 +325,7 @@ export class WhatsAppAutomationService {
     action: string
   ): Promise<void> {
     const serviceId = action.split("::")[1];
-    console.log("[DEBUG BOOKING] service selected:", serviceId);
+    //console.log("[DEBUG BOOKING] service selected:", serviceId);
 
     if (!serviceId) {
       await whatsappService.sendTextMessage(
@@ -343,7 +343,7 @@ export class WhatsAppAutomationService {
     serviceId: string
   ): Promise<void> {
     const slots = await this.getNextOpenSlots(5, serviceId);
-    console.log("[DEBUG BOOKING] slots found for service:", slots.length);
+    // console.log("[DEBUG BOOKING] slots found for service:", slots.length);
 
     if (!slots.length) {
       await whatsappService.sendTextMessage(
@@ -683,7 +683,7 @@ export class WhatsAppAutomationService {
   }
 
   async handleWebsiteReceptionist(message: string, sessionId: string): Promise<string> {
-    console.log("[Receptionist] Website query:", message, "session:", sessionId);
+    //console.log("[Receptionist] Website query:", message, "session:", sessionId);
     const reply = await this.callGeminiReceptionist(message, sessionId);
     return reply.replace("SHOW_MENU", "").trim();
   }
@@ -710,7 +710,7 @@ export class WhatsAppAutomationService {
 
     const servicesList = activeServices.length
       ? activeServices
-        .map((s) => `- ${s.name}${s.price ? `: PKR ${s.price}` : ""}`)
+        .map((s) => `- ${s.name}${s.basePrice ? `: PKR ${s.basePrice}` : ""}`)
         .join("\n")
       : "Please contact the clinic for service details.";
 
@@ -844,7 +844,7 @@ YOUR RULES:
     context: WhatsAppInboundContext,
     symptom: string
   ): Promise<void> {
-    console.log("[DEBUG TRIAGE] symptom selected:", symptom);
+    //console.log("[DEBUG TRIAGE] symptom selected:", symptom);
 
     // Ask one follow-up question to get more detail before calling AI
     await whatsappService.sendTextMessage(
@@ -863,11 +863,11 @@ YOUR RULES:
     context: WhatsAppInboundContext,
     symptoms: string
   ): Promise<void> {
-    console.log("[DEBUG TRIAGE] symptoms received:", symptoms);
+    //console.log("[DEBUG TRIAGE] symptoms received:", symptoms);
 
     const triageResult = await this.callGeminiForTriage(symptoms);
 
-    console.log("[DEBUG TRIAGE] result:", triageResult);
+    //console.log("[DEBUG TRIAGE] result:", triageResult);
 
     if (triageResult.urgency === "urgent") {
       await whatsappService.sendTextMessage(
@@ -1047,13 +1047,8 @@ Respond ONLY with valid JSON, no markdown, no extra text, no code blocks:
       ? await this.getServiceById(serviceId)
       : await this.getDefaultService();
 
-    console.log("[DEBUG SLOTS] serviceId requested:", serviceId ?? "none (using default)");
-    console.log(
-      "[DEBUG SLOTS] service found:",
-      service
-        ? `${service.name} (${service.id})`
-        : "NULL ❌ — check WHATSAPP_DEFAULT_SERVICE_ID in .env"
-    );
+    //console.log("[DEBUG SLOTS] serviceId requested:", serviceId ?? "none (using default)");
+    //console.log("[DEBUG SLOTS] service found:",  service ? `${service.name} (${service.id})` : "NULL ❌ — check WHATSAPP_DEFAULT_SERVICE_ID in .env");
 
     if (!service) {
       return [];
@@ -1062,8 +1057,8 @@ Respond ONLY with valid JSON, no markdown, no extra text, no code blocks:
     const candidateDates = this.getCandidateDates(14);
     const slotTimes = this.getConfiguredSlotTimes();
 
-    console.log("[DEBUG SLOTS] candidateDates:", candidateDates);
-    console.log("[DEBUG SLOTS] slotTimes:", slotTimes);
+    //console.log("[DEBUG SLOTS] candidateDates:", candidateDates);
+    //console.log("[DEBUG SLOTS] slotTimes:", slotTimes);
 
     if (!slotTimes.length) {
       console.warn(
@@ -1092,10 +1087,10 @@ Respond ONLY with valid JSON, no markdown, no extra text, no code blocks:
       )
     );
 
-    console.log("[DEBUG SLOTS] already booked keys:", [...bookedKeys]);
+    //console.log("[DEBUG SLOTS] already booked keys:", [...bookedKeys]);
 
     const now = new Date();
-    console.log("[DEBUG SLOTS] current time (server):", now.toISOString());
+    //console.log("[DEBUG SLOTS] current time (server):", now.toISOString());
 
     const slots: AvailableSlot[] = [];
 
@@ -1104,16 +1099,16 @@ Respond ONLY with valid JSON, no markdown, no extra text, no code blocks:
         const slotDate = new Date(`${selectedDate}T${selectedTime}`);
 
         if (slotDate <= now) {
-          console.log(`[DEBUG SLOTS] SKIPPED (past): ${selectedDate} ${selectedTime}`);
+          //console.log(`[DEBUG SLOTS] SKIPPED (past): ${selectedDate} ${selectedTime}`);
           continue;
         }
 
         if (bookedKeys.has(`${selectedDate}::${selectedTime}`)) {
-          console.log(`[DEBUG SLOTS] SKIPPED (booked): ${selectedDate} ${selectedTime}`);
+          // console.log(`[DEBUG SLOTS] SKIPPED (booked): ${selectedDate} ${selectedTime}`);
           continue;
         }
 
-        console.log(`[DEBUG SLOTS] AVAILABLE ✅: ${selectedDate} ${selectedTime}`);
+        //console.log(`[DEBUG SLOTS] AVAILABLE ✅: ${selectedDate} ${selectedTime}`);
 
         slots.push({
           selectedDate,
@@ -1129,7 +1124,7 @@ Respond ONLY with valid JSON, no markdown, no extra text, no code blocks:
       }
     }
 
-    console.log("[DEBUG SLOTS] total slots found:", slots.length);
+    //console.log("[DEBUG SLOTS] total slots found:", slots.length);
     return slots;
   }
 
