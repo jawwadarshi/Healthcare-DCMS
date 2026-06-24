@@ -5,9 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch src/app.ts",
-    "build": "echo 'No build step required for tsx production execution'",
-    "start": "tsx src/db/migrate.ts && tsx src/app.ts",
-    "seed:users": "ts-node-dev --transpile-only src/db/seed.ts"
+    "build": "echo 'No build step required'",
+    "start": "npx drizzle-kit push && tsx src/app.ts"
   },
   "keywords": [],
   "author": "",
