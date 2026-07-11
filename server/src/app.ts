@@ -45,6 +45,10 @@ app.use(`${API_PREFIX}${MODULE_ROUTES.receptionist}`, receptionistRoutes);
 app.get("/", (req, res) => {
   res.send("Dental Clinic API Running");
 });
+
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: "ready" });
+});
 app.get("/test-db", async (req, res) => {
   try {
     const result = await db.execute("SELECT NOW()");

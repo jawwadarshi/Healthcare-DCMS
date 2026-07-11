@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/app.ts",
     "build": "echo 'No build step required'",
-    "start": "npx drizzle-kit push && tsx src/app.ts"
+    "start": "npx drizzle-kit push && tsx src/app.ts",
+    "seed:users": "tsx src/db/seed.ts"
   },
   "keywords": [],
   "author": "",

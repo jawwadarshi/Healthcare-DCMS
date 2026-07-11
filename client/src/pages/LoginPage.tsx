@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useLogin } from '../hooks/useAuth';
 import { useAuth } from '../context/AuthContext';
+import { usePreWarm } from '../hooks/usePreWarm'; // Added usePreWarm import
 import { Button, Input, Card, Loader } from '../components';
 
 const loginSchema = z.object({
@@ -18,6 +19,9 @@ export const LoginPage = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const loginMutation = useLogin();
+
+  // Track backend warmth status
+  const isServerAwake = usePreWarm();
 
   const {
     register,
@@ -113,14 +117,15 @@ export const LoginPage = () => {
               {...register('password')}
             />
 
-            {/* Submit Button */}
+            {/* Submit Button with Smart Sleep Protection */}
             <Button
               type="submit"
-              className="w-full mt-6"
+              className={`w-full mt-6 transition duration-200 ${!isServerAwake ? 'bg-orange-500 hover:bg-orange-600 text-white' : ''
+                }`}
               isLoading={loginMutation.isPending}
               disabled={loginMutation.isPending}
             >
-              Sign In
+              {isServerAwake ? 'Sign In' : 'Connecting To Secure Server...'}
             </Button>
           </form>
 

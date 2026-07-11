@@ -3,8 +3,11 @@ import { Button, ServiceCard, Loader, FloatingSocialButtons, AiReceptionistChat 
 import { FeedbackSection } from '../components/FeedbackSection';
 import { ServiceCarousel } from '../components/ServiceCarousel';
 import { useServices } from '../hooks';
-
+import { usePreWarm } from '../hooks/usePreWarm';
 export const HomePage = () => {
+  // Passively trigger pre-warm on home page load
+  usePreWarm();
+
   const { data: services, isLoading } = useServices();
   const featuredServices = services?.slice(0, 3) || [];
 
@@ -206,9 +209,7 @@ export const HomePage = () => {
               {
                 name: 'Zain',
                 role: 'Business Owner',
-                //image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&q=80',
-                content:
-                  'Professional, friendly, and thorough. Doctor made me feel completely at ease. My smile has looked better!',
+                image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&q=80',
                 rating: 5,
               },
               {
