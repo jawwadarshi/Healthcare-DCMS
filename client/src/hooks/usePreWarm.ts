@@ -1,24 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
-export function usePreWarm() {
-    const [isServerAwake, setIsServerAwake] = useState(false);
-
+export const usePreWarm = () => {
     useEffect(() => {
-        // Dynamically uses your Vercel env variable, fallback to absolute string if needed
+        // Fallback to placeholder if env variable is missing
         const BACKEND_URL = import.meta.env.VITE_API_URL || 'https://your-dental-backend.onrender.com';
 
         console.log("User arrived. Initiating backend wake-up sequence...");
 
-        // Send a lightweight ping immediately when page mounts
-        fetch(`${BACKEND_URL}/api/health`)
-            .then((res) => {
-                if (res.ok) {
-                    setIsServerAwake(true);
-                    console.log("Backend server is fully awake.");
+        const wakeServer = async () => {
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/health`);
+                if (response.ok) {
+                    console.log("Backend successfully woken up!");
+                } else {
+                    console.warn(`Backend responded with status: ${response.status}`);
                 }
-            })
-            .catch((err) => console.error("Pre-warm ping failed:", err));
-    }, []);
+            } catch (error) {
+                console.error("Pre-warm ping failed:", error);
+            }
+        };
 
-    return isServerAwake;
-}
+        wakeServer();
+    }, []); // <--- CRITICAL: Empty array ensures this only runs ONCE on mount, preventing the infinite loop!
+};

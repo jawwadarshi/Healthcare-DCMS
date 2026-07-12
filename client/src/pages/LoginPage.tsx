@@ -20,8 +20,8 @@ export const LoginPage = () => {
   const { user, isAuthenticated } = useAuth();
   const loginMutation = useLogin();
 
-  // Track backend warmth status
-  const isServerAwake = usePreWarm();
+  // Track backend warmth status (coerce to boolean to avoid void truthiness errors)
+  const isServerAwake: boolean = Boolean(usePreWarm());
 
   const {
     register,

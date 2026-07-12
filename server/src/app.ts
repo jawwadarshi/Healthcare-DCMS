@@ -25,7 +25,19 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 
-app.use(cors());
+//app.use(cors());
+
+app.use(cors({
+  origin: [
+    'https://healthcare-dcms.vercel.app', // Your production Vercel frontend
+    'http://localhost:5173'              // Your local Vite development server
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'Server is awake!' });
+});
 app.use(express.json());
 
 // Serve static files (e.g., receptionist-widget.js)
@@ -42,13 +54,7 @@ app.use(`${API_PREFIX}${MODULE_ROUTES.billing}`, billingRoutes);
 app.use(`${API_PREFIX}${MODULE_ROUTES.whatsapp}`, whatsappRoutes);
 app.use(`${API_PREFIX}${MODULE_ROUTES.feedback}`, feedbackRoutes);
 app.use(`${API_PREFIX}${MODULE_ROUTES.receptionist}`, receptionistRoutes);
-// Add this near your other basic middleware/routes
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    message: 'Server is awake and ready!'
-  });
-});
+
 
 app.get("/", (req, res) => {
   res.send("Dental Clinic API Running");
