@@ -9,7 +9,7 @@ export const usePreWarm = () => {
 
         const wakeServer = async () => {
             try {
-                const response = await fetch(`${BACKEND_URL}/api/health`);
+                const response = await fetch(`${BACKEND_URL}/health`);
                 if (response.ok) {
                     console.log("Backend successfully woken up!");
                 } else {

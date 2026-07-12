@@ -24,7 +24,7 @@ export const FloatingSocialButtons = ({
         const whatsappLink = `https://wa.me/${cleanNumber}?text=hi`;
 
         // 1. Fire a background wake-up ping immediately
-        fetch(`${BACKEND_URL}/api/health`).catch(() => {
+        fetch(`${BACKEND_URL}/health`).catch(() => {
             /* Fire-and-forget: ignore errors, we just want to wake up the container */
         });
 
