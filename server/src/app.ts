@@ -42,13 +42,20 @@ app.use(`${API_PREFIX}${MODULE_ROUTES.billing}`, billingRoutes);
 app.use(`${API_PREFIX}${MODULE_ROUTES.whatsapp}`, whatsappRoutes);
 app.use(`${API_PREFIX}${MODULE_ROUTES.feedback}`, feedbackRoutes);
 app.use(`${API_PREFIX}${MODULE_ROUTES.receptionist}`, receptionistRoutes);
+// Add this near your other basic middleware/routes
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'Server is awake and ready!'
+  });
+});
+
 app.get("/", (req, res) => {
   res.send("Dental Clinic API Running");
 });
 
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: "ready" });
-});
+
+
 app.get("/test-db", async (req, res) => {
   try {
     const result = await db.execute("SELECT NOW()");
