@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 export const usePreWarm = () => {
     useEffect(() => {
         // Fallback to placeholder if env variable is missing
-        const BACKEND_URL = import.meta.env.VITE_API_URL || 'https://your-dental-backend.onrender.com';
+        const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || 'https://healthcare-dcms.onrender.com';
 
         console.log("User arrived. Initiating backend wake-up sequence...");
 

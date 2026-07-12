@@ -19,7 +19,7 @@ export const FloatingSocialButtons = ({
         setIsRedirecting(true);
 
         // Fallback to a placeholder if your environment variable isn't loaded yet
-        const BACKEND_URL = import.meta.env.VITE_API_URL || 'https://your-dental-backend.onrender.com';
+        const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || 'https://healthcare-dcms.onrender.com';
         const cleanNumber = whatsappNumber.replace(/\D/g, '');
         const whatsappLink = `https://wa.me/${cleanNumber}?text=hi`;
 
