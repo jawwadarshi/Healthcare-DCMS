@@ -214,18 +214,18 @@ export const PublicAppointmentPage = () => {
                     {...register('appointmentDate')}
                   />
 
-                  {/* Appointment Time */}
+                  {/* Appointment Time 
                   <Input
                     label="Appointment Time"
                     type="time"
                     error={errors.appointmentTime?.message}
                     disabled={bookingMutation.isPending}
                     {...register('appointmentTime')}
-                  />
+                  /> */}
                 </div>
               </div>
 
-              {/* Notes */}
+              {/* Notes 
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-2">
                   Additional Notes (Optional)
@@ -239,6 +239,7 @@ export const PublicAppointmentPage = () => {
                 />
                 <p className="mt-1 text-sm text-gray-600">Max 500 characters</p>
               </div>
+              */}
 
               {/* Submit Button */}
               <Button

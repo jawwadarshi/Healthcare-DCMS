@@ -34,7 +34,11 @@ export class AppointmentsService {
     }
   }
 
-  private validateAppointmentDateTime(appointmentDate: string, appointmentTime: string): void {
+  private validateAppointmentDateTime(appointmentDate?: string, appointmentTime?: string): void {
+    if (!appointmentDate || !appointmentTime) {
+      throw new AppError("Appointment date and time are required", 400);
+    }
+
     const now = new Date();
     const appointmentDateTime = new Date(`${appointmentDate}T${appointmentTime}:00`);
 
@@ -76,14 +80,21 @@ export class AppointmentsService {
     this.validateAppointmentDateTime(payload.appointmentDate, payload.appointmentTime);
 
     const appointment = await appointmentsRepository.create({
-      ...payload,
+      // ensure required fields are provided to repository by defaulting optional values
+      serviceId: payload.serviceId,
+      patientName: payload.patientName,
+      patientPhone: payload.patientPhone,
+      patientEmail: payload.patientEmail ?? "",
+      appointmentDate: payload.appointmentDate,
+      appointmentTime: payload.appointmentTime ?? "",
+      notes: payload.notes ?? "",
       doctorId: null,
       patientId: null,
       createdBy,
     });
 
     this.notifyWhatsApp(whatsappService.sendAppointmentBooked(appointment));
-    emitNewAppointment(payload.patientName, payload.appointmentDate, payload.appointmentTime);
+    emitNewAppointment(payload.patientName, payload.appointmentDate, payload.appointmentTime ?? "");
     return appointment;
   }
 
@@ -93,16 +104,18 @@ export class AppointmentsService {
     this.validateAppointmentDateTime(payload.appointmentDate, payload.appointmentTime);
 
     // Double-booking check
-    await this.checkDoctorAvailability(payload.doctorId, payload.appointmentDate, payload.appointmentTime);
+    await this.checkDoctorAvailability(payload.doctorId, payload.appointmentDate, payload.appointmentTime ?? "");
 
     const appointment = await appointmentsRepository.create({
       ...payload,
+      patientEmail: payload.patientEmail ?? "",
+      appointmentTime: payload.appointmentTime ?? "",
       patientId: null,
       createdBy,
     });
 
     this.notifyWhatsApp(whatsappService.sendAppointmentBooked(appointment));
-    emitNewAppointment(payload.patientName, payload.appointmentDate, payload.appointmentTime);
+    emitNewAppointment(payload.patientName, payload.appointmentDate, payload.appointmentTime ?? "");
     return appointment;
   }
 
