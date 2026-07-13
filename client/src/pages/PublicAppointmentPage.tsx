@@ -12,7 +12,7 @@ const appointmentSchema = z.object({
   patientPhone: z.string().regex(/^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/, 'Please enter a valid phone number'),
   serviceId: z.string().min(1, 'Please select a service'),
   appointmentDate: z.string().min(1, 'Please select a date'),
-  appointmentTime: z.string().min(1, 'Please select a time'),
+  appointmentTime: z.string().min(1, 'Please select a time').optional(),
   notes: z.string().optional(),
 });
 
@@ -36,6 +36,10 @@ export const PublicAppointmentPage = () => {
     resolver: zodResolver(appointmentSchema),
     defaultValues: {
       serviceId: serviceIdFromUrl || '',
+      appointmentTime: '',
+      patientEmail: '',
+      notes: '',
+
     },
   });
 

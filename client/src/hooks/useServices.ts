@@ -19,7 +19,7 @@ export interface PublicBookingRequest {
   patientPhone: string;
   patientEmail: string;
   appointmentDate: string;
-  appointmentTime: string;
+  appointmentTime?: string;
   notes?: string;
 }
 
