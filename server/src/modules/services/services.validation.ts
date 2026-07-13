@@ -4,8 +4,8 @@ export const createServiceSchema = z.object({
   body: z.object({
     name: z.string().min(1).max(255),
     description: z.string().min(1),
-    durationInMinutes: z.number().int().positive(),
-    basePrice: z.string().regex(/^\d+(\.\d{1,2})?$/, "basePrice must be a valid decimal"),
+    durationInMinutes: z.number().int().positive().optional(),
+    basePrice: z.string().regex(/^\d+(\.\d{1,2})?$/, "basePrice must be a valid decimal").optional(),
     isActive: z.boolean().optional(),
   }),
   query: z.object({}).optional().default({}),

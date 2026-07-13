@@ -48,14 +48,19 @@ export const useAdminServicesQuery = ({
 };
 
 export const useCreateService = () => {
-  const queryClient = useQueryClient();
-
+  const queryClient = useQueryClient(); //to manually tell React Query to forget old data or refresh its memory.
+  //useMutation is a special function from React Query meant strictly for changing data on a server (Creating, Updating, or Deleting). It returns tracking variables like .isPending (is it loading?)
+  //.mutateAsync (fire the request of the mutation)
+  // mutationFn : It runs when you call mutateAsync in your form.
   return useMutation({
-    mutationFn: async (payload: { name: string; basePrice: string }) => {
+    mutationFn: async (payload: { name: string; basePrice: string; description: string }) => {
+      //This is the actual network cable call! It tells your API client to make a POST request to the backend route '/services' and hand over the payload data package.
+      //The <ApiResponse<AdminService>> part is just TypeScript ensuring that the network response matches your exact data structure rules.
       const response = await apiClient.post<ApiResponse<AdminService>>('/services', payload);
       return response.data.data;
     },
-    onSuccess: () => {
+    onSuccess: () => { //If the backend successfully saved our new service, do the following steps immediately..."
+      //This tells React Query: "Hey! The list of services we stored under the label ['admin-services'] is now old and out of date, because we just added a new one. Erase that old list from your memory and fetch a fresh one from the server right now!"
       queryClient.invalidateQueries({ queryKey: ['admin-services'] });
       queryClient.invalidateQueries({ queryKey: ['services'] });
     },

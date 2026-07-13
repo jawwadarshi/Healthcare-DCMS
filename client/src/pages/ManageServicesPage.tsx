@@ -28,8 +28,8 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
 const ServiceStatusBadge = ({ active }: { active: boolean }) => (
   <span
     className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${active
-        ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-        : 'bg-slate-100 text-slate-700 ring-slate-200'
+      ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+      : 'bg-slate-100 text-slate-700 ring-slate-200'
       }`}
   >
     {active ? 'Active' : 'Inactive'}
@@ -50,6 +50,7 @@ export const ManageServicesPage = () => {
   const [statusError, setStatusError] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newServiceName, setNewServiceName] = useState('');
+  const [newServiceDescription, setNewServiceDescription] = useState('');
   const [newServicePrice, setNewServicePrice] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const limit = 8;
@@ -63,6 +64,7 @@ export const ManageServicesPage = () => {
   const createService = useCreateService();
   const deleteService = useDeleteService();
   const services = servicesQuery.data?.items ?? [];
+
   const total = servicesQuery.data?.meta.total ?? 0;
   const canManage = user?.role === 'admin';
 
@@ -91,16 +93,18 @@ export const ManageServicesPage = () => {
   };
 
   const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newServiceName.trim() || !newServicePrice.trim()) return;
+    e.preventDefault(); //e.preventDefault() halts the browser from refreshing the page
+    if (!newServiceName.trim() || !newServicePrice.trim() || !newServiceDescription.trim()) return;
 
     try {
       await createService.mutateAsync({
         name: newServiceName.trim(),
+        description: newServiceDescription.trim(),
         basePrice: newServicePrice.trim(),
       });
       setNewServiceName('');
       setNewServicePrice('');
+      setNewServiceDescription('');
       setIsCreateOpen(false);
     } catch {
       // Error handled via mutation state
@@ -123,7 +127,7 @@ export const ManageServicesPage = () => {
         title="Services Management"
         description="Review dental services, pricing, appointment duration, and booking availability."
         action={
-          canManage ? (
+          canManage ? (  //canManage ?: The code asks: "Is the currently logged-in user an authorized Admin
             <button
               type="button"
               onClick={() => setIsCreateOpen(true)}
@@ -251,6 +255,7 @@ export const ManageServicesPage = () => {
           setIsCreateOpen(false);
           setNewServiceName('');
           setNewServicePrice('');
+          setNewServiceDescription('');
           createService.reset();
         }}
         size="md"
@@ -284,6 +289,14 @@ export const ManageServicesPage = () => {
               onChange={(e) => setNewServicePrice(e.target.value)}
             />
           </Field>
+          <Field label="Description">
+            <TextInput
+              required
+              placeholder="e.g. Complete extraction and structural nerve canal cleaning."
+              value={newServiceDescription}
+              onChange={(e) => setNewServiceDescription(e.target.value)}
+            />
+          </Field>
           <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
             <button
               type="button"
@@ -291,6 +304,7 @@ export const ManageServicesPage = () => {
                 setIsCreateOpen(false);
                 setNewServiceName('');
                 setNewServicePrice('');
+                setNewServiceDescription('');
                 createService.reset();
               }}
               className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"

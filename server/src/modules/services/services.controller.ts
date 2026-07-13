@@ -4,7 +4,7 @@ import { sendSuccessResponse } from "../../common/utils/api-response.js";
 import { servicesService } from "./services.service.js";
 import type { ServiceRow } from "./services.repository.js";
 
-const toIsoDateTime = (value: Date): string => value.toISOString();
+const toIsoDateTime = (value: Date | null): string | null => (value ? value.toISOString() : null);
 
 const toServiceContract = (row: ServiceRow) => {
   return {
@@ -12,7 +12,7 @@ const toServiceContract = (row: ServiceRow) => {
     name: row.name,
     description: row.description,
     durationInMinutes: row.durationInMinutes,
-    basePrice: row.basePrice.toString(),
+    basePrice: row.basePrice == null ? null : row.basePrice.toString(),
     isActive: row.isActive,
     createdAt: toIsoDateTime(row.createdAt),
     updatedAt: toIsoDateTime(row.updatedAt),
