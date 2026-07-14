@@ -16,10 +16,20 @@ const toInvoiceContract = (invoice: InvoiceRow & { items: InvoiceItemRow[] }) =>
         total: invoice.total,
         paymentStatus: invoice.paymentStatus,
         paymentMethod: invoice.paymentMethod,
-        paymentDate: invoice.paymentDate?.toISOString(),
+
+        // 🛠️ Safe parsing: handle Date objects, strings, or null values without crashing
+        paymentDate: invoice.paymentDate
+            ? (invoice.paymentDate instanceof Date
+                ? invoice.paymentDate.toISOString()
+                : new Date(invoice.paymentDate).toISOString())
+            : null,
+
         paymentNotes: invoice.paymentNotes,
-        issuedDate: invoice.issuedDate.toISOString(),
-        dueDate: invoice.dueDate?.toISOString(),
+        issuedDate: invoice.issuedDate instanceof Date ? invoice.issuedDate.toISOString() : new Date(invoice.issuedDate).toISOString(),
+        dueDate: invoice.dueDate
+            ? (invoice.dueDate instanceof Date ? invoice.dueDate.toISOString() : new Date(invoice.dueDate).toISOString())
+            : null,
+
         items: invoice.items.map((item) => ({
             id: item.id,
             serviceId: item.serviceId,
@@ -29,8 +39,8 @@ const toInvoiceContract = (invoice: InvoiceRow & { items: InvoiceItemRow[] }) =>
             subtotal: item.subtotal,
         })),
         createdBy: invoice.createdBy,
-        createdAt: invoice.createdAt.toISOString(),
-        updatedAt: invoice.updatedAt.toISOString(),
+        createdAt: invoice.createdAt instanceof Date ? invoice.createdAt.toISOString() : new Date(invoice.createdAt).toISOString(),
+        updatedAt: invoice.updatedAt instanceof Date ? invoice.updatedAt.toISOString() : new Date(invoice.updatedAt).toISOString(),
     };
 };
 

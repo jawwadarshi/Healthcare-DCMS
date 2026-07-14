@@ -48,7 +48,7 @@ export interface CreateInvoiceRequest {
 export interface UpdatePaymentStatusRequest {
     paymentStatus: 'pending' | 'paid' | 'partially_paid';
     paymentMethod?: string;
-    paymentDate?: string;
+    paymentDate?: `${string}Z` | "";
     paymentNotes?: string;
     amount?: string;
     discountPercent?: number;
