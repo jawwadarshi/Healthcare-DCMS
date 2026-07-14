@@ -273,6 +273,7 @@ export const InvoiceDetailsPage = () => {
                     <PaymentStatusUpdater
                         invoiceId={invoice.id}
                         currentStatus={invoice.paymentStatus}
+                        invoiceTotal={invoice.total}
                         isOpen={showPaymentUpdater}
                         onClose={() => setShowPaymentUpdater(false)}
                         onSuccess={() => refetch()}

@@ -41,6 +41,7 @@ export interface CreateInvoiceRequest {
         unitPrice: string;
     }>;
     discount?: string;
+    discountPercent?: number;
     dueDate?: string;
 }
 
@@ -49,6 +50,8 @@ export interface UpdatePaymentStatusRequest {
     paymentMethod?: string;
     paymentDate?: string;
     paymentNotes?: string;
+    amount?: string;
+    discountPercent?: number;
 }
 
 // Create invoice

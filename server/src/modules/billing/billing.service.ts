@@ -1,11 +1,11 @@
 import { AppError } from "../../common/errors/app-error.js";
 import { db } from "../../db/index.js";
-import { patients, services, payments } from "../../db/schema.js";
+import { patients, services, payments, invoices } from "../../db/schema.js";
 import { eq, sql } from "drizzle-orm";
 import { billingRepository, type InvoiceItemRow } from "./billing.repository.js";
 import type { CreateInvoiceInput, UpdatePaymentStatusInput, GetPatientInvoicesQuery, ListAllInvoicesQuery } from "./billing.validation.js";
-//import { v4 as generateUUID } from "crypto";
 import { inArray } from 'drizzle-orm';
+
 export class BillingService {
     /**
      * Generate a unique invoice number
@@ -39,10 +39,6 @@ export class BillingService {
 
         // Validate all services exist
         const serviceIds = payload.items.map((item) => item.serviceId);
-        /*const serviceList = await db
-            .select()
-            .from(services)
-            .where((s) => serviceIds.includes(s.id));*/
         const result = await db.select()
             .from(services)
             .where(inArray(services.id, serviceIds));
@@ -69,8 +65,15 @@ export class BillingService {
             });
         }
 
-        const discount = parseFloat(payload.discount || "0");
-        const total = Math.max(0, subtotal - discount);
+        // Calculate discount: flat amount OR percentage (1-20%)
+        let discountAmount = parseFloat(payload.discount || "0");
+        if (payload.discountPercent && payload.discountPercent >= 1 && payload.discountPercent <= 20) {
+            const percentDiscount = subtotal * (payload.discountPercent / 100);
+            // Use the larger of flat discount and percent discount
+            discountAmount = Math.max(discountAmount, percentDiscount);
+        }
+
+        const total = Math.max(0, subtotal - discountAmount);
 
         // Create invoice
         const invoice = await billingRepository.createInvoice({
@@ -78,7 +81,7 @@ export class BillingService {
             patientId: payload.patientId,
             treatmentHistoryId: payload.treatmentHistoryId,
             subtotal: subtotal.toString(),
-            discount: discount.toString(),
+            discount: discountAmount.toString(),
             total: total.toString(),
             paymentStatus: "pending",
             paymentMethod: undefined,
@@ -164,8 +167,22 @@ export class BillingService {
     }
 
     /**
+     * Calculate the effective total for an invoice after optional discount percent.
+     */
+    private calculateDiscountedTotal(
+        invoiceTotal: number,
+        discountPercent?: number
+    ): number {
+        if (discountPercent && discountPercent >= 1 && discountPercent <= 20) {
+            return Math.max(0, invoiceTotal * (1 - discountPercent / 100));
+        }
+        return invoiceTotal;
+    }
+
+    /**
      * Update invoice payment status with split ledger tracking.
      * Inserts a payment row and recalculates the payment status based on remaining balance.
+     * Supports optional `amount` for partial payments and optional `discountPercent` to reduce total.
      */
     async updatePaymentStatus(id: string, payload: UpdatePaymentStatusInput, userId?: string) {
         // Validate invoice exists
@@ -180,17 +197,41 @@ export class BillingService {
             throw new AppError("Invalid payment status", 400);
         }
 
-        // Calculate amount being paid this time
+        // Calculate effective total after optional discount percent
         const invoiceTotal = parseFloat(invoice.total);
+        const effectiveTotal = this.calculateDiscountedTotal(invoiceTotal, payload.discountPercent);
+
+        // If a discount percent was applied and it changes the total, update the invoice's total
+        if (payload.discountPercent && payload.discountPercent >= 1 && payload.discountPercent <= 20) {
+            const discountAmount = invoiceTotal - effectiveTotal;
+            await db
+                .update(invoices)
+                .set({
+                    discount: discountAmount.toString(),
+                    total: effectiveTotal.toString(),
+                    updatedAt: new Date(),
+                })
+                .where(eq(invoices.id, id));
+        }
+
+        // Get previous payments total
         const previousPaid = await this.getTotalPaidForInvoice(invoice.id);
-        const amountPaid = invoiceTotal - previousPaid; // Full remaining amount
+
+        // Determine the amount to insert
+        let amountToInsert: number;
+        if (payload.amount) {
+            amountToInsert = parseFloat(payload.amount);
+        } else {
+            // Default: pay the full remaining balance
+            amountToInsert = Math.max(0, effectiveTotal - previousPaid);
+        }
 
         // Insert a payment record (split ledger)
-        if (amountPaid > 0) {
+        if (amountToInsert > 0) {
             const effectiveUserId = userId ?? invoice.createdBy;
             await db.insert(payments).values({
                 invoiceId: invoice.id,
-                amount: amountPaid.toString(),
+                amount: amountToInsert.toString(),
                 paymentMethod: payload.paymentMethod ?? null,
                 paymentDate: payload.paymentDate ? new Date(payload.paymentDate) : new Date(),
                 notes: payload.paymentNotes ?? null,
@@ -199,8 +240,8 @@ export class BillingService {
         }
 
         // Calculate new total paid and determine status
-        const newTotalPaid = previousPaid + Math.max(0, amountPaid);
-        const remaining = invoiceTotal - newTotalPaid;
+        const newTotalPaid = previousPaid + Math.max(0, amountToInsert);
+        const remaining = Math.max(0, effectiveTotal - newTotalPaid);
 
         let finalStatus: string;
         if (remaining <= 0) {
@@ -225,7 +266,7 @@ export class BillingService {
         }
 
         // Log payment update
-        console.info(`[Billing] Invoice ${invoice.invoiceNumber} payment status updated to ${finalStatus}`);
+        console.info(`[Billing] Invoice ${invoice.invoiceNumber} payment status updated to ${finalStatus} (paid: ${newTotalPaid}, remaining: ${remaining})`);
 
         // Fetch and return updated invoice
         return await billingRepository.findInvoiceById(id);

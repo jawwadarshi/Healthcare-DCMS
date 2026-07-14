@@ -15,6 +15,7 @@ export const createInvoiceSchema = z.object({
             )
             .min(1),
         discount: z.string().regex(/^\d+(\.\d{1,2})?$/).default("0"),
+        discountPercent: z.number().int().min(1).max(20).optional(),
         dueDate: z.string().datetime().optional(),
     }),
     params: z.object({}),
@@ -27,6 +28,8 @@ export const updatePaymentStatusSchema = z.object({
         paymentMethod: z.string().min(1).optional(),
         paymentDate: z.string().datetime().optional(),
         paymentNotes: z.string().min(1).optional(),
+        amount: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
+        discountPercent: z.number().int().min(1).max(20).optional(),
     }),
     params: z.object({
         id: z.string().uuid(),

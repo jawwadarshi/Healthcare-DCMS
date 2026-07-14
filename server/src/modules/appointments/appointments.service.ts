@@ -7,7 +7,7 @@ import type {
 } from "./appointments.validation.js";
 import { appointmentsRepository } from "./appointments.repository.js";
 import { db } from "../../db/index.js";
-import { users, services, appointments, invoices, invoiceItems } from "../../db/schema.js";
+import { users, services, appointments, invoices, invoiceItems, treatmentHistories } from "../../db/schema.js";
 import { eq, and, or, ne, inArray } from "drizzle-orm";
 import { whatsappService } from "../whatsapp/whatsapp.service.js";
 import { whatsappAutomationService } from "../whatsapp/whatsapp-automation.service.js";
@@ -185,25 +185,47 @@ export class AppointmentsService {
   /**
    * Fire-and-forget: find the invoice for the completed appointment and
    * send the summary + PDF to the patient via WhatsApp.
+   *
+   * The lookup chain is: appointment → treatmentHistory → invoice
    */
   private async sendInvoiceOnAppointmentCompletion(
     appointment: import("./appointments.repository.js").AppointmentRow
   ): Promise<void> {
-    // Try to find an invoice linked to this appointment via treatment history
+    console.log(`[Appointments] sendInvoiceOnAppointmentCompletion started for appointment ${appointment.id}`);
+
+    // Step 1: Find the treatment history linked to this appointment
+    const treatmentHistoryRecord = await db
+      .select()
+      .from(treatmentHistories)
+      .where(eq(treatmentHistories.appointmentId, appointment.id))
+      .limit(1);
+
+    if (!treatmentHistoryRecord.length) {
+      console.warn(
+        `[Appointments] No treatment history found for completed appointment ${appointment.id}. Cannot look up invoice.`
+      );
+      return;
+    }
+
+    const treatmentHistory = treatmentHistoryRecord[0]!;
+    console.log(`[Appointments] Found treatment history ${treatmentHistory.id} for appointment ${appointment.id}`);
+
+    // Step 2: Find the invoice linked to this treatment history
     const invoiceRecord = await db
       .select()
       .from(invoices)
-      .where(eq(invoices.treatmentHistoryId, appointment.id))
+      .where(eq(invoices.treatmentHistoryId, treatmentHistory.id))
       .limit(1);
 
     if (!invoiceRecord.length) {
       console.warn(
-        `[Appointments] No invoice found for completed appointment ${appointment.id}`
+        `[Appointments] No invoice found for treatment history ${treatmentHistory.id} (appointment ${appointment.id})`
       );
       return;
     }
 
     const invoice = invoiceRecord[0]!;
+    console.log(`[Appointments] Found invoice ${invoice.invoiceNumber} for appointment ${appointment.id}`);
 
     // Get invoice items
     const items = await db
@@ -223,7 +245,7 @@ export class AppointmentsService {
       `Remaining Balance: ${invoice.paymentStatus === "paid"
         ? "0.00"
         : invoice.paymentStatus === "partially_paid"
-          ? invoice.total // simplified; real calc in billing service
+          ? invoice.total
           : invoice.total
       }`,
       `Status: ${invoice.paymentStatus}`,
@@ -251,6 +273,7 @@ export class AppointmentsService {
         total: invoice.total,
         issuedDate: invoice.issuedDate.toISOString().split("T")[0] ?? invoice.issuedDate.toISOString(),
       });
+      console.log(`[Appointments] PDF generated successfully for invoice ${invoice.id}`);
     } catch (pdfError) {
       console.error(
         `[Appointments] Failed to generate PDF for invoice ${invoice.id}:`,
@@ -261,6 +284,7 @@ export class AppointmentsService {
 
     // Send WhatsApp - wrap in try/catch so it does NOT crash the completion
     try {
+      console.log(`[Appointments] Sending WhatsApp invoice to ${appointment.patientPhone}`);
       await whatsappService.sendInvoiceSummary(
         appointment.patientPhone,
         summary,
