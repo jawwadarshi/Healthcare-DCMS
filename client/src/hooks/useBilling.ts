@@ -161,6 +161,8 @@ export const useUpdatePaymentStatus = () => {
         },
         onSuccess: (data) => {
             queryClient.setQueryData(['invoice', data.id], data);
+            queryClient.invalidateQueries({ queryKey: ['invoices'] });
+            queryClient.invalidateQueries({ queryKey: ['partial-invoices'] });
             queryClient.invalidateQueries({ queryKey: ['patient-invoices', data.patientId] });
         },
     });

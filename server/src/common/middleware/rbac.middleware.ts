@@ -35,6 +35,7 @@ export const authenticate: RequestHandler = (req, _res, next) => {
       userId: decoded.userId,
       email: decoded.email,
       role: decoded.role,
+      doctorId: decoded.doctorId,
     };
 
     return next();

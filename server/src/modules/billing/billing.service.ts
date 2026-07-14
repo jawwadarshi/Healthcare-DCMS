@@ -1,7 +1,7 @@
 import { AppError } from "../../common/errors/app-error.js";
 import { db } from "../../db/index.js";
-import { patients, services } from "../../db/schema.js";
-import { eq } from "drizzle-orm";
+import { patients, services, payments } from "../../db/schema.js";
+import { eq, sql } from "drizzle-orm";
 import { billingRepository, type InvoiceItemRow } from "./billing.repository.js";
 import type { CreateInvoiceInput, UpdatePaymentStatusInput, GetPatientInvoicesQuery, ListAllInvoicesQuery } from "./billing.validation.js";
 //import { v4 as generateUUID } from "crypto";
@@ -152,9 +152,22 @@ export class BillingService {
     }
 
     /**
-     * Update invoice payment status
+     * Get the sum of all payments for a given invoice.
      */
-    async updatePaymentStatus(id: string, payload: UpdatePaymentStatusInput) {
+    private async getTotalPaidForInvoice(invoiceId: string): Promise<number> {
+        const result = await db
+            .select({ totalPaid: sql<number>`COALESCE(SUM(CAST(amount AS numeric)), 0)` })
+            .from(payments)
+            .where(eq(payments.invoiceId, invoiceId));
+
+        return Number(result[0]?.totalPaid ?? 0);
+    }
+
+    /**
+     * Update invoice payment status with split ledger tracking.
+     * Inserts a payment row and recalculates the payment status based on remaining balance.
+     */
+    async updatePaymentStatus(id: string, payload: UpdatePaymentStatusInput, userId?: string) {
         // Validate invoice exists
         const invoice = await billingRepository.findInvoiceById(id);
         if (!invoice) {
@@ -167,12 +180,43 @@ export class BillingService {
             throw new AppError("Invalid payment status", 400);
         }
 
+        // Calculate amount being paid this time
+        const invoiceTotal = parseFloat(invoice.total);
+        const previousPaid = await this.getTotalPaidForInvoice(invoice.id);
+        const amountPaid = invoiceTotal - previousPaid; // Full remaining amount
+
+        // Insert a payment record (split ledger)
+        if (amountPaid > 0) {
+            const effectiveUserId = userId ?? invoice.createdBy;
+            await db.insert(payments).values({
+                invoiceId: invoice.id,
+                amount: amountPaid.toString(),
+                paymentMethod: payload.paymentMethod ?? null,
+                paymentDate: payload.paymentDate ? new Date(payload.paymentDate) : new Date(),
+                notes: payload.paymentNotes ?? null,
+                createdBy: effectiveUserId,
+            });
+        }
+
+        // Calculate new total paid and determine status
+        const newTotalPaid = previousPaid + Math.max(0, amountPaid);
+        const remaining = invoiceTotal - newTotalPaid;
+
+        let finalStatus: string;
+        if (remaining <= 0) {
+            finalStatus = "paid";
+        } else if (newTotalPaid > 0) {
+            finalStatus = "partially_paid";
+        } else {
+            finalStatus = "pending";
+        }
+
         // Update payment status
         const updated = await billingRepository.updatePaymentStatus(
             id,
-            payload.paymentStatus,
+            finalStatus,
             payload.paymentMethod,
-            payload.paymentDate ? new Date(payload.paymentDate) : undefined,
+            payload.paymentDate ? new Date(payload.paymentDate) : new Date(),
             payload.paymentNotes
         );
 
@@ -181,7 +225,7 @@ export class BillingService {
         }
 
         // Log payment update
-        console.info(`[Billing] Invoice ${invoice.invoiceNumber} payment status updated to ${payload.paymentStatus}`);
+        console.info(`[Billing] Invoice ${invoice.invoiceNumber} payment status updated to ${finalStatus}`);
 
         // Fetch and return updated invoice
         return await billingRepository.findInvoiceById(id);

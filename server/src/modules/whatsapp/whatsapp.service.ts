@@ -79,11 +79,23 @@ type WhatsAppInteractiveListPayload = {
   };
 };
 
+type WhatsAppDocumentPayload = {
+  messaging_product: "whatsapp";
+  to: string;
+  type: "document";
+  document: {
+    filename: string;
+    mimetype: string;
+    data: string;
+  };
+};
+
 type WhatsAppMessagePayload =
   | WhatsAppTextPayload
   | WhatsAppTemplatePayload
   | WhatsAppInteractiveButtonPayload
-  | WhatsAppInteractiveListPayload;
+  | WhatsAppInteractiveListPayload
+  | WhatsAppDocumentPayload;
 
 export type WhatsAppReplyButton = {
   id: string;
@@ -242,6 +254,57 @@ export class WhatsAppService {
     };
 
     await this.sendPayload(payload);
+  }
+
+  async sendInvoiceSummary(
+    to: string,
+    summary: string,
+    pdfBuffer?: Buffer
+  ): Promise<void> {
+    if (!this.isConfigured()) {
+      console.warn("WhatsApp is not configured. Skipping invoice message.");
+      return;
+    }
+
+    const recipientPhone = this.normalizeAndAssertPhoneNumber(to);
+
+    // Send the text summary first
+    const textPayload: WhatsAppTextPayload = {
+      messaging_product: "whatsapp",
+      to: recipientPhone,
+      type: "text",
+      text: {
+        preview_url: false,
+        body: summary,
+      },
+    };
+
+    await this.sendPayload(textPayload);
+    console.info(`[WhatsApp] Invoice summary sent to ${to}`);
+
+    // If a PDF buffer is provided, send it as a document
+    if (pdfBuffer) {
+      try {
+        // Convert buffer to base64 for media upload
+        const base64Pdf = pdfBuffer.toString("base64");
+
+        const documentPayload = {
+          messaging_product: "whatsapp",
+          to: recipientPhone,
+          type: "document",
+          document: {
+            filename: "Invoice.pdf",
+            mimetype: "application/pdf",
+            data: base64Pdf,
+          },
+        } as any;
+
+        await this.sendPayload(documentPayload);
+        console.info(`[WhatsApp] Invoice PDF sent to ${to}`);
+      } catch (pdfError) {
+        console.error(`[WhatsApp] Failed to send invoice PDF to ${to}:`, pdfError);
+      }
+    }
   }
 
   async sendTextMessage(to: string, body: string): Promise<void> {

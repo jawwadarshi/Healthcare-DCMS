@@ -35,12 +35,8 @@ export class AuthService {
   private generateToken(payload: JwtPayload): string {
     const secret = process.env.JWT_SECRET as string;
     return jwt.sign(payload, secret, {
-      expiresIn: process.env.JWT_EXPIRES_IN as any // Using 'any' here bypasses the strict overload check
+      expiresIn: process.env.JWT_EXPIRES_IN as any
     });
-
-    /*return jwt.sign(payload, this.getJwtSecret(), {
-      expiresIn: process.env.JWT_EXPIRES_IN ?? "7d",
-    });*/
   }
 
   private sanitizeUser(user: Record<string, any>): AuthUser {
@@ -69,11 +65,19 @@ export class AuthService {
       role: payload.role || AppRole.PATIENT,
     });
 
-    const token = this.generateToken({
+    const role = isAppRole(user.role) ? user.role : AppRole.PATIENT;
+    const tokenPayload: JwtPayload = {
       userId: user.id,
       email: user.email,
-      role: isAppRole(user.role) ? user.role : AppRole.PATIENT,
-    });
+      role,
+    };
+
+    // If the registered user is a doctor, include doctorId
+    if (role === AppRole.DOCTOR) {
+      tokenPayload.doctorId = user.id;
+    }
+
+    const token = this.generateToken(tokenPayload);
 
     return {
       token,
@@ -93,11 +97,19 @@ export class AuthService {
       throw new AppError("Invalid email or password", 401);
     }
 
-    const token = this.generateToken({
+    const role = isAppRole(user.role) ? user.role : AppRole.PATIENT;
+    const tokenPayload: JwtPayload = {
       userId: user.id,
       email: user.email,
-      role: isAppRole(user.role) ? user.role : AppRole.PATIENT,
-    });
+      role,
+    };
+
+    // If the user is a doctor, include doctorId for role-based filtering
+    if (role === AppRole.DOCTOR) {
+      tokenPayload.doctorId = user.id;
+    }
+
+    const token = this.generateToken(tokenPayload);
 
     return {
       token,

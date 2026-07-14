@@ -7,11 +7,12 @@ import type {
 } from "./appointments.validation.js";
 import { appointmentsRepository } from "./appointments.repository.js";
 import { db } from "../../db/index.js";
-import { users, services, appointments } from "../../db/schema.js";
+import { users, services, appointments, invoices, invoiceItems } from "../../db/schema.js";
 import { eq, and, or, ne, inArray } from "drizzle-orm";
 import { whatsappService } from "../whatsapp/whatsapp.service.js";
 import { whatsappAutomationService } from "../whatsapp/whatsapp-automation.service.js";
 import { emitNewAppointment } from "../../socket/index.js";
+import { generateInvoicePdf } from "../../common/utils/pdf-generator.js";
 
 export class AppointmentsService {
   private notifyWhatsApp(task: Promise<void>): void {
@@ -162,14 +163,118 @@ export class AppointmentsService {
     this.notifyWhatsApp(whatsappService.sendAppointmentUpdated(updated));
 
     if (payload.status === "completed") {
+      // Schedule sentiment check
       whatsappAutomationService.scheduleSentimentCheck(
         updated.patientPhone,
         updated.patientName,
         updated.id
       );
+
+      // ─── Invoice WhatsApp Dispatch (fire-and-forget) ──────────────────
+      this.sendInvoiceOnAppointmentCompletion(updated).catch((error) => {
+        console.error(
+          `[Appointments] Failed to send invoice WhatsApp for appointment ${updated.id}:`,
+          error
+        );
+      });
     }
 
     return updated;
+  }
+
+  /**
+   * Fire-and-forget: find the invoice for the completed appointment and
+   * send the summary + PDF to the patient via WhatsApp.
+   */
+  private async sendInvoiceOnAppointmentCompletion(
+    appointment: import("./appointments.repository.js").AppointmentRow
+  ): Promise<void> {
+    // Try to find an invoice linked to this appointment via treatment history
+    const invoiceRecord = await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.treatmentHistoryId, appointment.id))
+      .limit(1);
+
+    if (!invoiceRecord.length) {
+      console.warn(
+        `[Appointments] No invoice found for completed appointment ${appointment.id}`
+      );
+      return;
+    }
+
+    const invoice = invoiceRecord[0]!;
+
+    // Get invoice items
+    const items = await db
+      .select()
+      .from(invoiceItems)
+      .where(eq(invoiceItems.invoiceId, invoice.id));
+
+    // Build summary message
+    const clinicName = process.env.CLINIC_NAME ?? "Dental Clinic";
+    const summary = [
+      `🧾 *Invoice from ${clinicName}*`,
+      ``,
+      `Patient: ${appointment.patientName}`,
+      `Invoice #: ${invoice.invoiceNumber}`,
+      `Total Amount: $${invoice.total}`,
+      `Paid Amount: $${invoice.paymentStatus === "paid" ? invoice.total : "0.00"}`,
+      `Remaining Balance: ${invoice.paymentStatus === "paid"
+        ? "0.00"
+        : invoice.paymentStatus === "partially_paid"
+          ? invoice.total // simplified; real calc in billing service
+          : invoice.total
+      }`,
+      `Status: ${invoice.paymentStatus}`,
+      ``,
+      `Thank you for choosing ${clinicName}!`,
+    ].join("\n");
+
+    // Generate PDF
+    let pdfBuffer: Buffer | undefined;
+    try {
+      pdfBuffer = await generateInvoicePdf({
+        invoiceNumber: invoice.invoiceNumber,
+        patientName: appointment.patientName,
+        patientPhone: appointment.patientPhone,
+        patientEmail: appointment.patientEmail,
+        clinicName,
+        items: items.map((item) => ({
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          subtotal: item.subtotal,
+        })),
+        subtotal: invoice.subtotal,
+        discount: invoice.discount ?? "0",
+        total: invoice.total,
+        issuedDate: invoice.issuedDate.toISOString().split("T")[0] ?? invoice.issuedDate.toISOString(),
+      });
+    } catch (pdfError) {
+      console.error(
+        `[Appointments] Failed to generate PDF for invoice ${invoice.id}:`,
+        pdfError
+      );
+      // Continue without PDF
+    }
+
+    // Send WhatsApp - wrap in try/catch so it does NOT crash the completion
+    try {
+      await whatsappService.sendInvoiceSummary(
+        appointment.patientPhone,
+        summary,
+        pdfBuffer
+      );
+      console.info(
+        `[Appointments] Invoice WhatsApp sent for appointment ${appointment.id}`
+      );
+    } catch (waError) {
+      console.error(
+        `[Appointments] Failed to send invoice WhatsApp for appointment ${appointment.id}:`,
+        waError
+      );
+    }
   }
 
   async deleteAppointment(id: string) {

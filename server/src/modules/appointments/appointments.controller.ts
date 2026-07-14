@@ -58,15 +58,21 @@ export class AppointmentsController {
   });
 
   list = asyncHandler(async (req, res) => {
-    //const { items, total } =: This uses Object Destructuring. Your service is going to return a single bundle containing two things: an array of appointments (items) and a count of how many matching rows exist in total (total). This syntax unpacks them into individual variables immediately.
-    const { items, total } = await appointmentsService.listAppointments(req.query as any); //req.query as any: req.query grabs whatever search filters are typed into the website URL bar (like ?page=2&limit=10&status=confirmed). The as any tells TypeScript: "Don't be too strict about checking the exact types of these filters right now."
+    const query = { ...(req.query as any) };
+
+    // ─── Doctor-Specific Filtering ────────────────────────────────────
+    // If the authenticated user is a DOCTOR, force filter to their own appointments
+    if (req.user && req.user.role === 'doctor' && req.user.doctorId) {
+      query.doctorId = req.user.doctorId;
+    }
+
+    const { items, total } = await appointmentsService.listAppointments(query);
     return sendSuccessResponse(res, "Appointments fetched successfully", {
-      items: items.map(toAppointmentContract), //items: This is the data key holding your list of appointments inside the final response object. items.map(...): This is a JavaScript loop. It goes through every single appointment row returned from your database one by one. For each row, it runs the toAppointmentContract function to clean up the data (like formatting dates and removing any sensitive info) before sending it back to the client.
-      //toAppointmentContract: This function acts like a filter, transforming each database row into a clean format ("contract") that contains only
-      meta: {  //meta: "metadata". This starts a sub-object dedicated to holding data about your data. Instead of raw appointments, it holds details regarding how the appointment list is organized
-        page: (req.query as any).page, //page: Grabs the page number the user requested from the URL (e.g., Page 2) and mirrors it back in the response.
-        limit: (req.query as any).limit, //limit:Grabs the layout limit amount the user requested from the URL (e.g., 10 items per page) and mirrors it back.
-        total, //total,: This sends back the total number of matching rows across your entire database table.
+      items: items.map(toAppointmentContract),
+      meta: {
+        page: query.page,
+        limit: query.limit,
+        total,
       },
     });
   });

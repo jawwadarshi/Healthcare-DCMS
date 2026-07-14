@@ -323,6 +323,32 @@ export const invoices = pgTable(
   })
 );
 
+// Payments Table (split ledger tracking)
+export const payments = pgTable(
+  "payments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+
+    invoiceId: uuid("invoice_id")
+      .notNull()
+      .references(() => invoices.id, { onDelete: "cascade", onUpdate: "cascade" }),
+
+    amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
+    paymentMethod: varchar("payment_method", { length: 100 }),
+    paymentDate: timestamp("payment_date").defaultNow().notNull(),
+    notes: text("notes"),
+
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict", onUpdate: "cascade" }),
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    invoiceIdIdx: index("payments_invoice_id_idx").on(table.invoiceId),
+  })
+);
+
 // Feedback Table
 export const feedback = pgTable(
   "feedback",

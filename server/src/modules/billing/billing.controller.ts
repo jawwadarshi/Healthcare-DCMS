@@ -215,7 +215,11 @@ export class BillingController {
             throw new AppError("Insufficient permissions", 403);
         }
 
-        const result = await billingService.updatePaymentStatus(req.params.id as string, req.body);
+        const result = await billingService.updatePaymentStatus(
+            req.params.id as string,
+            req.body,
+            req.user.userId
+        );
 
         // FIX: Added guard clause to handle null
         if (!result) {
