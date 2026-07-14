@@ -32,7 +32,7 @@ app.use(cors({
     'https://healthcare-dcms.vercel.app', // Your production Vercel frontend
     'http://localhost:5173'              // Your local Vite development server
   ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   credentials: true
 }));
 app.get('/api/v1/health', (req, res) => {
