@@ -28,7 +28,8 @@ export const MyAppointmentsPage = () => {
   const { user } = useAuth();
   const [filter, setFilter] = useState<DoctorAppointmentFilter>('today');
   const [selectedAppointment, setSelectedAppointment] = useState<DoctorAppointment | null>(null);
-  const appointmentsQuery = useDoctorAppointmentsQuery(user?.userId);
+  //const appointmentsQuery = useDoctorAppointmentsQuery(user?.userId);
+  const appointmentsQuery = useDoctorAppointmentsQuery(user?.id);
   const servicesQuery = useDoctorServicesQuery();
   const serviceMap = useMemo(
     () => new Map((servicesQuery.data ?? []).map((service) => [service.id, service])),
@@ -40,7 +41,7 @@ export const MyAppointmentsPage = () => {
   );
   console.log('--- DEBUGGING APPOINTMENTS PORTAL ---');
   console.log('Logged-in User:', user);
-  console.log('Doctor User ID being sent to API:', user?.userId);
+  console.log('Doctor User ID being sent to API:', user?.id);
   console.log('Raw Appointments from API:', appointmentsQuery.data);
   console.log('Active Filter:', filter);
   console.log('Filtered Appointments output:', filteredAppointments);
@@ -69,8 +70,8 @@ export const MyAppointmentsPage = () => {
                 type="button"
                 onClick={() => setFilter(item.value)}
                 className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${filter === item.value
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'bg-slate-50 text-slate-700 ring-1 ring-slate-200 hover:bg-white'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-slate-50 text-slate-700 ring-1 ring-slate-200 hover:bg-white'
                   }`}
               >
                 {item.label}
