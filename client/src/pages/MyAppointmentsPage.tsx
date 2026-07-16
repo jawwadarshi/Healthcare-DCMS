@@ -38,7 +38,15 @@ export const MyAppointmentsPage = () => {
     () => filterDoctorAppointments(appointmentsQuery.data ?? [], filter),
     [appointmentsQuery.data, filter]
   );
-
+  console.log('--- DEBUGGING APPOINTMENTS PORTAL ---');
+  console.log('Logged-in User:', user);
+  console.log('Doctor User ID being sent to API:', user?.userId);
+  console.log('Raw Appointments from API:', appointmentsQuery.data);
+  console.log('Active Filter:', filter);
+  console.log('Filtered Appointments output:', filteredAppointments);
+  console.log('Is API Loading?:', appointmentsQuery.isLoading);
+  console.log('Is API Error?:', appointmentsQuery.isError);
+  console.log('-------------------------------------');
   return (
     <div className="space-y-6">
       <DoctorPageHeader
@@ -60,11 +68,10 @@ export const MyAppointmentsPage = () => {
                 key={item.value}
                 type="button"
                 onClick={() => setFilter(item.value)}
-                className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-                  filter === item.value
+                className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${filter === item.value
                     ? 'bg-blue-600 text-white shadow-sm'
                     : 'bg-slate-50 text-slate-700 ring-1 ring-slate-200 hover:bg-white'
-                }`}
+                  }`}
               >
                 {item.label}
               </button>

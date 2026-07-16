@@ -49,7 +49,7 @@ export const InvoicesPage = () => {
         const timeout = window.setTimeout(() => {
             setDebouncedSearch(search);
             setPage(1);
-        }, 350);
+        }, 850);
         return () => window.clearTimeout(timeout);
     }, [search]);
 
@@ -231,19 +231,19 @@ export const InvoicesPage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                     <div className="rounded-lg bg-white p-6 shadow-sm border-l-4 border-teal-600">
                         <p className="text-sm font-semibold text-gray-600 uppercase">Total Invoiced</p>
-                        <p className="text-3xl font-bold text-gray-900 mt-2">${totalRevenue.toFixed(2)}</p>
+                        <p className="text-3xl font-bold text-gray-900 mt-2">{totalRevenue.toFixed(2)}</p>
                         <p className="text-xs text-gray-500 mt-1">{invoices.length} invoices</p>
                     </div>
                     <div className="rounded-lg bg-white p-6 shadow-sm border-l-4 border-emerald-600">
                         <p className="text-sm font-semibold text-gray-600 uppercase">Paid</p>
-                        <p className="text-3xl font-bold text-emerald-600 mt-2">${paidAmount.toFixed(2)}</p>
+                        <p className="text-3xl font-bold text-emerald-600 mt-2">{paidAmount.toFixed(2)}</p>
                         <p className="text-xs text-gray-500 mt-1">
                             {invoices.filter((inv) => inv.paymentStatus === 'paid').length} paid
                         </p>
                     </div>
                     <div className="rounded-lg bg-white p-6 shadow-sm border-l-4 border-yellow-600">
                         <p className="text-sm font-semibold text-gray-600 uppercase">Pending</p>
-                        <p className="text-3xl font-bold text-yellow-600 mt-2">${pendingAmount.toFixed(2)}</p>
+                        <p className="text-3xl font-bold text-yellow-600 mt-2">{pendingAmount.toFixed(2)}</p>
                         <p className="text-xs text-gray-500 mt-1">
                             {invoices.filter((inv) => ['pending', 'partially_paid'].includes(inv.paymentStatus)).length} unpaid
                         </p>
@@ -382,7 +382,7 @@ export const InvoicesPage = () => {
                                 <label key={service.id} className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-colors ${selectedServiceIds.includes(service.id) ? 'bg-teal-50' : 'hover:bg-gray-50'}`}>
                                     <input type="checkbox" checked={selectedServiceIds.includes(service.id)} onChange={() => handleServiceToggle(service.id)} className="rounded border-gray-300 text-teal-600 focus:ring-teal-500" />
                                     <div className="flex-1"><p className="font-medium text-gray-900">{service.name}</p><p className="text-xs text-gray-500">{service.durationInMinutes} mins</p></div>
-                                    <span className="font-semibold text-teal-600">${parseFloat(service.basePrice).toFixed(2)}</span>
+                                    <span className="font-semibold text-teal-600">{parseFloat(service.basePrice).toFixed(2)}</span>
                                 </label>
                             )) : <p className="text-gray-500 text-sm p-2">No services available</p>}
                         </div>
