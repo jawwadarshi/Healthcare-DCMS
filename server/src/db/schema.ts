@@ -224,7 +224,6 @@ export const treatmentHistories = pgTable(
       .references(() => patients.id, { onDelete: "cascade", onUpdate: "cascade" }),
 
     appointmentId: uuid("appointment_id")
-      .notNull()
       .unique()
       .references(() => appointments.id, { onDelete: "restrict", onUpdate: "cascade" }),
 
@@ -239,7 +238,6 @@ export const treatmentHistories = pgTable(
     treatmentDate: date("treatment_date").notNull(),
 
     createdBy: uuid("created_by")
-      .notNull()
       .references(() => users.id, { onDelete: "restrict", onUpdate: "cascade" }),
 
     createdAt: timestamp("created_at").defaultNow().notNull(),

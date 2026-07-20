@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
+import { Check, Loader2, Mic, MicOff } from 'lucide-react';
 import { SectionTitle } from '../components/SectionTitle';
 import { Loader } from '../components/Loader';
 import { StaffModal } from '../components/staff-dashboard/StaffModal';
 import { useTreatmentPatients, usePatientTreatmentHistory } from '../hooks/useTreatmentHistory';
 
 const formatDate = (iso: string) => {
+    if (!iso) return 'N/A';
     const d = new Date(iso);
+    if (isNaN(d.getTime())) return 'N/A';
     const day = String(d.getDate()).padStart(2, '0');
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const year = d.getFullYear();
@@ -23,12 +26,34 @@ interface PatientTreatmentSummary {
     totalTreatments: number;
 }
 
+interface ServiceItem {
+    id: string;
+    serviceName: string;
+}
+
+interface TreatmentItem {
+    id: string;
+    treatmentDate: string;
+    notes?: string | null;
+    prescription?: string | null;
+    diagnosis?: string | null;
+    services: ServiceItem[];
+}
+
 export const TreatmentHistoryPage = () => {
     const [page, setPage] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [selectedPatient, setSelectedPatient] = useState<PatientTreatmentSummary | null>(null);
     const [historyPage, setHistoryPage] = useState(1);
+
+    // AI Scribe State variables
+    const [isRecording, setIsRecording] = useState(false);
+    const [transcript, setTranscript] = useState('');
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
+    const [aiError, setAiError] = useState<string | null>(null);
+    const [recognition, setRecognition] = useState<any>(null);
 
     // Debounce search
     useEffect(() => {
@@ -39,8 +64,36 @@ export const TreatmentHistoryPage = () => {
         return () => window.clearTimeout(timeout);
     }, [searchTerm]);
 
-    const { data: patientsData, isLoading, isError } = useTreatmentPatients(page, 20, debouncedSearch || undefined);
-    const patients = patientsData?.items ?? [];
+    // Initialize Speech Recognition API
+    useEffect(() => {
+        const SpeechRecognition =
+            (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+        if (SpeechRecognition) {
+            const rec = new SpeechRecognition();
+            rec.continuous = true;
+            rec.interimResults = true;
+            rec.lang = 'en-US';
+
+            rec.onresult = (event: any) => {
+                let currentTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    currentTranscript += event.results[i][0].transcript;
+                }
+                setTranscript(currentTranscript);
+            };
+
+            rec.onerror = () => {
+                setAiError('Voice capture cut out. Check mic permissions.');
+                setIsRecording(false);
+            };
+
+            setRecognition(rec);
+        }
+    }, []);
+
+    const { data: patientsData, isLoading, isError, refetch: refetchPatients } = useTreatmentPatients(page, 20, debouncedSearch || undefined);
+    const patients: PatientTreatmentSummary[] = patientsData?.items ?? [];
     const total = patientsData?.meta.total ?? 0;
     const totalPages = Math.ceil(total / 20);
 
@@ -50,7 +103,7 @@ export const TreatmentHistoryPage = () => {
         historyPage,
         50
     );
-    const historyItems = historyData?.items ?? [];
+    const historyItems: TreatmentItem[] = historyData?.items ?? [];
 
     const handlePatientClick = (patient: PatientTreatmentSummary) => {
         setSelectedPatient(patient);
@@ -60,6 +113,60 @@ export const TreatmentHistoryPage = () => {
     const closeModal = () => {
         setSelectedPatient(null);
         setHistoryPage(1);
+    };
+
+    // Toggle Scribe Recording
+    const handleToggleRecording = () => {
+        if (!recognition) {
+            setAiError('Speech recognition is not fully supported in this browser layout.');
+            return;
+        }
+
+        if (isRecording) {
+            recognition.stop();
+            setIsRecording(false);
+        } else {
+            setAiError(null);
+            setAiSuccessMessage(null);
+            setTranscript('');
+            recognition.start();
+            setIsRecording(true);
+        }
+    };
+
+    // Submit text to Gemini Backend Route
+    const handleProcessScribe = async () => {
+        if (!transcript.trim()) return;
+        setAiLoading(true);
+        setAiError(null);
+        setAiSuccessMessage(null);
+
+        try {
+            const env = (window as any).process?.env || {};
+            const baseUrl = env.NEXT_PUBLIC_BASE_URL || env.BASEURL || "http://localhost:5005";
+
+            const res = await fetch(`${baseUrl}/api/v1/ai/parse-scribe`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rawText: transcript }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to file record.');
+            }
+
+            setAiSuccessMessage(`Successfully processed! Treatment history filed for patient: ${data.data?.patientName || 'Matched Patient'}`);
+            setTranscript('');
+
+            // Refresh dashboard data instantly so new lists show up right away
+            refetchPatients();
+        } catch (err: any) {
+            setAiError(err.message || 'An unknown error occurred matching patient records.');
+        } finally {
+            setAiLoading(false);
+        }
     };
 
     if (isLoading) {
@@ -85,14 +192,75 @@ export const TreatmentHistoryPage = () => {
 
     return (
         <div className="min-h-screen bg-gray-50 p-8">
-            <div className="max-w-7xl mx-auto">
+            <div className="max-w-7xl mx-auto space-y-6">
+
                 {/* Header */}
-                <div className="mb-8">
-                    <SectionTitle title="Treatment History" subtitle="Patient treatment records" />
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-gray-200 pb-5">
+                    <div>
+                        <SectionTitle title="Treatment History" subtitle="Patient treatment records" />
+                    </div>
+                </div>
+
+                {/* AI Scribe Console Panel */}
+                <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                    <div className="flex items-center gap-2 mb-3">
+                        <span className="flex h-2 w-2 rounded-full bg-teal-500" />
+                        <h3 className="text-sm font-semibold text-gray-800">Hands-Free AI Voice Scribe</h3>
+                    </div>
+
+                    <div className="flex flex-col md:flex-row items-stretch gap-4">
+                        <div className="flex flex-col gap-2 justify-start">
+                            <button
+                                type="button"
+                                onClick={handleToggleRecording}
+                                disabled={aiLoading}
+                                className={`flex items-center justify-center gap-2 px-5 py-3 rounded-lg font-medium text-sm transition-all shadow-sm whitespace-nowrap ${isRecording
+                                    ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
+                                    : 'bg-teal-600 hover:bg-teal-700 text-white'
+                                    }`}
+                            >
+                                {isRecording ? <MicOff size={16} /> : <Mic size={16} />}
+                                {isRecording ? 'Stop Transcribing' : 'Record Voice Entry'}
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={handleProcessScribe}
+                                disabled={aiLoading || !transcript.trim() || isRecording}
+                                className="flex items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800 disabled:opacity-40 text-white font-medium text-sm px-5 py-3 rounded-lg transition-all whitespace-nowrap"
+                            >
+                                {aiLoading ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
+                                File to History
+                            </button>
+                        </div>
+
+                        {/* Interactive Textarea replacing the readOnly input */}
+                        <div className="flex-1">
+                            <textarea
+                                rows={3}
+                                placeholder="Click record and start speaking clinical findings, or type manually here..."
+                                value={transcript}
+                                onChange={(e) => setTranscript(e.target.value)}
+                                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 font-normal placeholder-gray-400 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 resize-y"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Alert Notices */}
+                    {aiError && (
+                        <div className="mt-3 text-xs bg-red-50 text-red-700 border border-red-100 p-2.5 rounded-md">
+                            ⚠️ {aiError}
+                        </div>
+                    )}
+                    {aiSuccessMessage && (
+                        <div className="mt-3 text-xs bg-green-50 text-green-800 border border-green-100 p-2.5 rounded-md font-medium">
+                            ✓ {aiSuccessMessage}
+                        </div>
+                    )}
                 </div>
 
                 {/* Search Bar */}
-                <div className="mb-6">
+                <div>
                     <input
                         type="text"
                         placeholder="Search by patient name or phone number..."
@@ -198,8 +366,8 @@ export const TreatmentHistoryPage = () => {
             {/* Patient History Modal */}
             <StaffModal
                 isOpen={!!selectedPatient}
-                title={`${selectedPatient?.firstName} ${selectedPatient?.lastName} - Treatment History`}
-                description={`${selectedPatient?.phone} · ${selectedPatient?.totalTreatments} total visits`}
+                title={`${selectedPatient?.firstName ?? ''} ${selectedPatient?.lastName ?? ''} - Treatment History`}
+                description={`${selectedPatient?.phone ?? ''} · ${selectedPatient?.totalTreatments ?? 0} total visits`}
                 onClose={closeModal}
                 size="xl"
             >
@@ -234,7 +402,7 @@ export const TreatmentHistoryPage = () => {
                                 <div className="ml-6 mb-3">
                                     <p className="text-xs font-semibold text-gray-600 uppercase mb-1">Services Rendered</p>
                                     <div className="flex flex-wrap gap-2">
-                                        {treatment.services.map((svc) => (
+                                        {treatment.services?.map((svc) => (
                                             <span
                                                 key={svc.id}
                                                 className="inline-flex rounded-full bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-700 ring-1 ring-teal-200"

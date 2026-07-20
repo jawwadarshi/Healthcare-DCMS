@@ -20,6 +20,7 @@ import { billingRoutes } from "./modules/billing/billing.routes.js";
 import { feedbackRoutes } from "./modules/feedback/feedback.routes.js";
 import { initializeSocket } from "./socket/index.js";
 import { receptionistRoutes } from "./modules/whatsapp/receptionist.routes.js";
+import { aiRoutes } from "./modules/ai/ai.routes.js";
 dotenv.config();
 
 const app = express();
@@ -54,6 +55,7 @@ app.use(`${API_PREFIX}${MODULE_ROUTES.billing}`, billingRoutes);
 app.use(`${API_PREFIX}${MODULE_ROUTES.whatsapp}`, whatsappRoutes);
 app.use(`${API_PREFIX}${MODULE_ROUTES.feedback}`, feedbackRoutes);
 app.use(`${API_PREFIX}${MODULE_ROUTES.receptionist}`, receptionistRoutes);
+app.use(`${API_PREFIX}${MODULE_ROUTES.ai}`, aiRoutes);
 
 
 app.get("/", (req, res) => {

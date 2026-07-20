@@ -125,7 +125,7 @@ export const LoginPage = () => {
               isLoading={loginMutation.isPending}
               disabled={loginMutation.isPending}
             >
-              {isServerAwake ? 'Sign In' : 'Connecting To Secure Server...'}
+              {isServerAwake ? 'Sign In' : 'Sign In !!'}
             </Button>
           </form>
 

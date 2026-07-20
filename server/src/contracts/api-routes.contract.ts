@@ -13,6 +13,7 @@ export const MODULE_ROUTES = {
   whatsapp: "/whatsapp",
   feedback: "/feedback",
   receptionist: "/receptionist",
+  ai: "/ai",
 } as const;
 
 export const AUTH_ENDPOINTS = {
@@ -72,4 +73,8 @@ export const BILLING_ENDPOINTS = {
 
 export const WHATSAPP_ENDPOINTS = {
   webhook: "/webhook",
+} as const;
+
+export const AI_ENDPOINTS = {
+  parseScribe: "/parse-scribe", // 👈 Endpoint to turn doctor's speech to JSON
 } as const;
